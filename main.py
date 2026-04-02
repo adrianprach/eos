@@ -1,17 +1,21 @@
 import os
 from dotenv import load_dotenv 
 from google import genai
+import argparse
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
-prompt = "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
 
 if api_key is None:
     raise RuntimeError("GEMINI_API_KEY is not set.")
 
+parser = argparse.ArgumentParser(description="EOS prompt")
+parser.add_argument("user_prompt", type=str, help="User prompt")
+
 def main():
-    attempt = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+    args = parser.parse_args()
+    attempt = client.models.generate_content(model="gemini-2.5-flash", contents=args.user_prompt)
     if attempt.usage_metadata is None:
         raise RuntimeError("Fail to fetch usage metadata.")
     # attempt.usage_metadata.thoughts_token_count
