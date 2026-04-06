@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from call_function import call_function
 from prompts import system_prompt
 from functions.get_files_info import schema_get_files_info
 from functions.get_file_content import schema_get_file_content
@@ -48,9 +49,21 @@ def main():
         attempt.usage_metadata.prompt_token_count,
         attempt.usage_metadata.candidates_token_count,
     )
+    functions_results = []
     if attempt.function_calls is not None:
         for fc in attempt.function_calls:
-            print(f"Calling function: {fc.name}({fc.args})")
+            function_call_result = call_function(fc, args.verbose)
+            if function_call_result.parts is None:
+                raise RuntimeError("Parts is None.")
+            if function_call_result.parts[0].function_response is None:
+                raise RuntimeError("First function response from first part is None.")
+            if function_call_result.parts[0].function_response.response is None:
+                raise RuntimeError("First response from first function is None.")
+            functions_results.append(function_call_result.parts[0])
+            if args.verbose:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+
+
     # attempt.usage_metadata.prompt_token_count
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")
