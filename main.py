@@ -35,34 +35,45 @@ available_functions = types.Tool(
 def main():
     args = parser.parse_args()
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
-    attempt = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt, tools=[available_functions]
-        ),
-    )
-    if attempt.usage_metadata is None:
-        raise RuntimeError("Fail to fetch usage metadata.")
-    # attempt.usage_metadata.thoughts_token_count
-    prompt_token, response_token = (
-        attempt.usage_metadata.prompt_token_count,
-        attempt.usage_metadata.candidates_token_count,
-    )
-    functions_results = []
-    if attempt.function_calls is not None:
-        for fc in attempt.function_calls:
-            function_call_result = call_function(fc, args.verbose)
-            if function_call_result.parts is None:
-                raise RuntimeError("Parts is None.")
-            if function_call_result.parts[0].function_response is None:
-                raise RuntimeError("First function response from first part is None.")
-            if function_call_result.parts[0].function_response.response is None:
-                raise RuntimeError("First response from first function is None.")
-            functions_results.append(function_call_result.parts[0])
-            if args.verbose:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
+    iteration_ceil = 20
 
+    for i in range(iteration_ceil):
+        attempt = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt, tools=[available_functions]
+            ),
+        )
+        if attempt.candidates is not None:
+            messages.extend(attempt.candidates)
+        if attempt.usage_metadata is None:
+            raise RuntimeError("Fail to fetch usage metadata.")
+        # attempt.usage_metadata.thoughts_token_count
+        prompt_token, response_token = (
+            attempt.usage_metadata.prompt_token_count,
+            attempt.usage_metadata.candidates_token_count,
+        )
+        functions_results = []
+        if attempt.function_calls is not None:
+            for fc in attempt.function_calls:
+                function_call_result = call_function(fc, args.verbose)
+                if function_call_result.parts is None:
+                    raise RuntimeError("Parts is None.")
+                if function_call_result.parts[0].function_response is None:
+                    raise RuntimeError("First function response from first part is None.")
+                if function_call_result.parts[0].function_response.response is None:
+                    raise RuntimeError("First response from first function is None.")
+                functions_results.append(function_call_result.parts[0])
+                if args.verbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+        else:
+            print("Function called not required")
+            break
+        messages.append(types.Content(role="user", parts=functions_results))
+        if i >= iteration_ceil - 1:
+            print(f"Max iteration reached: {iteration_ceil}, not able to complete the response.")
+            return 1
 
     # attempt.usage_metadata.prompt_token_count
     if args.verbose:
@@ -70,7 +81,7 @@ def main():
         print(f"Prompt tokens: {prompt_token}\nResponse tokens: {response_token}")
         print(f"Response:\n{attempt.text}")
     else:
-        print(attempt.text)
+        print(f"Final response: \n{attempt.text}")
 
 
 if __name__ == "__main__":
