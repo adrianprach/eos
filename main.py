@@ -68,7 +68,7 @@ def main():
                 if args.verbose:
                     print(f"-> {function_call_result.parts[0].function_response.response}")
         else:
-            print("Function called not required")
+            print("Function called not required.")
             break
         messages.append(types.Content(role="user", parts=functions_results))
         if i >= iteration_ceil - 1:

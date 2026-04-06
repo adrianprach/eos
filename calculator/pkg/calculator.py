@@ -8,6 +8,7 @@ class Calculator:
             "*": lambda a, b: a * b,
             "/": lambda a, b: a / b,
         }
+        # Corrected precedence values
         self.precedence = {
             "+": 1,
             "-": 1,
@@ -18,15 +19,44 @@ class Calculator:
     def evaluate(self, expression):
         if not expression or expression.isspace():
             return None
-        tokens = expression.strip().split()
+        # Tokenize the expression, splitting by spaces and preserving parentheses
+        tokens = []
+        current_token = ""
+        for char in expression:
+            if char.isspace():
+                if current_token:
+                    tokens.append(current_token)
+                    current_token = ""
+            elif char in self.operators or char in "()":
+                if current_token:
+                    tokens.append(current_token)
+                    current_token = ""
+                tokens.append(char)
+            else:
+                current_token += char
+        if current_token:
+            tokens.append(current_token)
+
         return self._evaluate_infix(tokens)
 
     def _evaluate_infix(self, tokens):
         values = []
         operators = []
 
-        for token in tokens:
-            if token in self.operators:
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+
+            if token == "(":
+                operators.append(token)
+            elif token == ")":
+                while operators and operators[-1] != "(":
+                    self._apply_operator(operators, values)
+                if operators and operators[-1] == "(":
+                    operators.pop()  # Pop the opening parenthesis
+                else:
+                    raise ValueError("Mismatched parentheses")
+            elif token in self.operators:
                 while (
                     operators
                     and operators[-1] in self.operators
@@ -34,17 +64,20 @@ class Calculator:
                 ):
                     self._apply_operator(operators, values)
                 operators.append(token)
-            else:
+            else:  # It's a number
                 try:
                     values.append(float(token))
                 except ValueError:
-                    raise ValueError(f"invalid token: {token}")
+                    raise ValueError(f"Invalid token: {token}")
+            i += 1
 
         while operators:
+            if operators[-1] == "(":
+                raise ValueError("Mismatched parentheses")
             self._apply_operator(operators, values)
 
         if len(values) != 1:
-            raise ValueError("invalid expression")
+            raise ValueError("Invalid expression")
 
         return values[0]
 
@@ -54,7 +87,7 @@ class Calculator:
 
         operator = operators.pop()
         if len(values) < 2:
-            raise ValueError(f"not enough operands for operator {operator}")
+            raise ValueError(f"Not enough operands for operator {operator}")
 
         b = values.pop()
         a = values.pop()
