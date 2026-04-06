@@ -1,5 +1,6 @@
-
 import os
+
+from google.genai import types
 
 
 def write_file(working_directory, file_path, content):
@@ -12,7 +13,26 @@ def write_file(working_directory, file_path, content):
     if os.path.isdir(file):
         return f'Error: Cannot write to "{file_path}" as it is a directory'
     os.makedirs(os.path.dirname(file), exist_ok=True)
-    with open(file, 'w') as f:
+    with open(file, "w") as f:
         f.write(content)
         return f'Successfully wrote to "{file_path} ({len(content)} characters written)'
 
+
+schema_write_file = types.FunctionDeclaration(
+    name="write_file",
+    description="Write or overwrite files, in relative to current working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="File path, relative to the working directory (default is the working directory itself)",
+            ),
+            "content": types.Schema(
+                type=types.Type.STRING,
+                description="New content for the specified file.",
+            ),
+        },
+        required=["file_path", "content"]
+    ),
+)
